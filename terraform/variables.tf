@@ -25,8 +25,27 @@ variable "backend_image" {
   default     = "gcr.io/cloudrun/placeholder"
 }
 
-variable "frontend_image" {
-  description = "Docker image for frontend"
+# AWS Configuration
+variable "aws_region" {
+  description = "AWS Region for frontend hosting"
   type        = string
-  default     = "gcr.io/cloudrun/placeholder"
+  default     = "ap-northeast-1"
+}
+
+variable "frontend_domains" {
+  description = "Frontend domain names per environment"
+  type        = map(string)
+  default = {
+    dev = "youtube-comment-guard.dev.devtools.site"
+    prd = "youtube-comment-guard.devtools.site"
+  }
+}
+
+variable "route53_zone_names" {
+  description = "Route 53 Hosted Zone names per environment"
+  type        = map(string)
+  default = {
+    dev = "dev.devtools.site"
+    prd = "devtools.site"
+  }
 }

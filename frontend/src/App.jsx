@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import Dashboard from './components/Dashboard'
 import Header from './components/Header'
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
+
 function App() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -11,7 +13,7 @@ function App() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/comments/summary')
+      const response = await fetch(`${API_BASE_URL}/api/comments/summary`)
       if (!response.ok) {
         throw new Error('Failed to fetch data')
       }
@@ -28,7 +30,7 @@ function App() {
   const handleSync = async () => {
     try {
       setSyncing(true)
-      await fetch('/api/comments/sync', { method: 'POST' })
+      await fetch(`${API_BASE_URL}/api/comments/sync`, { method: 'POST' })
       await fetchData()
     } catch (err) {
       setError(err.message)
