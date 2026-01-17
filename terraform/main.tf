@@ -6,12 +6,45 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 5.0"
     }
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
   }
 }
 
 provider "google" {
   project = local.project_id
   region  = var.region
+}
+
+# AWS Provider - Default region
+provider "aws" {
+  region  = var.aws_region
+  profile = local.environment # dev or prd profile
+
+  default_tags {
+    tags = {
+      Project     = "YouTube Comment Guard"
+      Environment = local.environment
+      ManagedBy   = "Terraform"
+    }
+  }
+}
+
+# AWS Provider - us-east-1 (CloudFront ACM certificates require us-east-1)
+provider "aws" {
+  alias   = "us_east_1"
+  region  = "us-east-1"
+  profile = local.environment # dev or prd profile
+
+  default_tags {
+    tags = {
+      Project     = "YouTube Comment Guard"
+      Environment = local.environment
+      ManagedBy   = "Terraform"
+    }
+  }
 }
 
 locals {
@@ -64,6 +97,27 @@ resource "google_firestore_database" "main" {
 }
 
 # Secret Manager - YouTube OAuth credentials
+resource "google_firestore_index" "comments_category_toxicity_published" {
+  project    = local.project_id
+  database   = google_firestore_database.main.name
+  collection = "comments"
+
+  fields {
+    field_path = "category"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "published_at"
+    order      = "DESCENDING"
+  }
+
+  fields {
+    field_path = "toxicity_score"
+    order      = "DESCENDING"
+  }
+}
+
 resource "google_secret_manager_secret" "youtube_credentials" {
   secret_id = "youtube-oauth-credentials"
 
@@ -108,7 +162,7 @@ resource "google_cloud_run_v2_service" "backend" {
     service_account = google_service_account.cloud_run.email
 
     containers {
-      image = var.backend_image
+      image = "asia-northeast1-docker.pkg.dev/${local.project_id}/youtube-guard/backend:latest"
 
       env {
         name  = "GOOGLE_CLOUD_PROJECT"
@@ -130,36 +184,9 @@ resource "google_cloud_run_v2_service" "backend" {
         }
       }
 
-      resources {
-        limits = {
-          cpu    = "1"
-          memory = "512Mi"
-        }
-        cpu_idle = true # リクエストベース課金（CPU idle時は課金されない）
-      }
-    }
-
-    scaling {
-      min_instance_count = local.current_scaling.min_instance_count
-      max_instance_count = local.current_scaling.max_instance_count
-    }
-  }
-
-  depends_on = [google_project_service.apis]
-}
-
-# Cloud Run - Frontend
-resource "google_cloud_run_v2_service" "frontend" {
-  name     = "${local.name_prefix}-frontend"
-  location = var.region
-
-  template {
-    containers {
-      image = var.frontend_image
-
       env {
-        name  = "VITE_API_URL"
-        value = google_cloud_run_v2_service.backend.uri
+        name  = "FRONTEND_URL"
+        value = "https://${var.frontend_domains[local.environment]}"
       }
 
       resources {
@@ -180,13 +207,8 @@ resource "google_cloud_run_v2_service" "frontend" {
   depends_on = [google_project_service.apis]
 }
 
-# Allow unauthenticated access to frontend
-resource "google_cloud_run_v2_service_iam_member" "frontend_public" {
-  name     = google_cloud_run_v2_service.frontend.name
-  location = var.region
-  role     = "roles/run.invoker"
-  member   = "allUsers"
-}
+# Frontend is now hosted on AWS CloudFront + S3
+# See aws_frontend.tf for frontend infrastructure
 
 # Allow unauthenticated access to backend (secured by OAuth)
 resource "google_cloud_run_v2_service_iam_member" "backend_public" {
