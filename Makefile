@@ -2,7 +2,8 @@
 # 開発・デプロイ用コマンド集
 
 .PHONY: help dev-backend dev-frontend dev install-backend install-frontend install \
-        build-backend build-frontend build deploy terraform-init terraform-plan terraform-apply \
+        build-backend build-frontend build deploy \
+        terraform-setup terraform-init terraform-workspace-new terraform-workspace terraform-plan terraform-apply terraform-destroy \
         test lint clean
 
 # デフォルト: ヘルプ表示
@@ -21,9 +22,11 @@ help:
 	@echo "  make build-frontend   - フロントエンドのみビルド"
 	@echo ""
 	@echo "デプロイ (Terraform):"
-	@echo "  make terraform-init   - Terraform 初期化"
-	@echo "  make terraform-plan   - デプロイ計画を確認"
-	@echo "  make terraform-apply  - GCP にデプロイ"
+	@echo "  make terraform-setup          - tfenv で Terraform をセットアップ"
+	@echo "  make terraform-init           - Terraform 初期化"
+	@echo "  make terraform-workspace-new  - ワークスペース作成 (ENV=dev|prd)"
+	@echo "  make terraform-plan ENV=dev   - デプロイ計画を確認"
+	@echo "  make terraform-apply ENV=prd  - GCP にデプロイ"
 	@echo ""
 	@echo "テスト・品質:"
 	@echo "  make test             - テスト実行"
@@ -94,16 +97,33 @@ push: push-backend push-frontend
 # Terraform
 # ========================================
 
+ENV ?= dev
+
+# tfenv でバージョンをインストール・切り替え
+terraform-setup:
+	@command -v tfenv >/dev/null 2>&1 || (echo "❌ tfenv がインストールされていません: brew install tfenv" && exit 1)
+	cd terraform && tfenv install && tfenv use
+	@echo "✅ Terraform $(shell cat terraform/.terraform-version) をセットアップしました"
+
 terraform-init:
 	cd terraform && terraform init
 
-terraform-plan:
+# ワークスペース作成（存在しない場合のみ）
+terraform-workspace-new:
+	cd terraform && terraform workspace new $(ENV) 2>/dev/null || true
+
+# ワークスペース切り替え
+terraform-workspace:
+	cd terraform && terraform workspace select $(ENV)
+	@echo "✅ ワークスペース $(ENV) に切り替えました"
+
+terraform-plan: terraform-workspace
 	cd terraform && terraform plan
 
-terraform-apply:
+terraform-apply: terraform-workspace
 	cd terraform && terraform apply
 
-terraform-destroy:
+terraform-destroy: terraform-workspace
 	cd terraform && terraform destroy
 
 # ========================================
