@@ -10,12 +10,13 @@ terraform {
 }
 
 provider "google" {
-  project = var.project_id
+  project = local.project_id
   region  = var.region
 }
 
 locals {
   environment = terraform.workspace
+  project_id  = var.project_ids[local.environment]
   name_prefix = "youtube-guard-${local.environment}"
 
   # 環境別のスケーリング設定
@@ -81,19 +82,19 @@ resource "google_service_account" "cloud_run" {
 
 # IAM bindings for Service Account
 resource "google_project_iam_member" "cloud_run_firestore" {
-  project = var.project_id
+  project = local.project_id
   role    = "roles/datastore.user"
   member  = "serviceAccount:${google_service_account.cloud_run.email}"
 }
 
 resource "google_project_iam_member" "cloud_run_aiplatform" {
-  project = var.project_id
+  project = local.project_id
   role    = "roles/aiplatform.user"
   member  = "serviceAccount:${google_service_account.cloud_run.email}"
 }
 
 resource "google_project_iam_member" "cloud_run_secretmanager" {
-  project = var.project_id
+  project = local.project_id
   role    = "roles/secretmanager.secretAccessor"
   member  = "serviceAccount:${google_service_account.cloud_run.email}"
 }
@@ -111,7 +112,7 @@ resource "google_cloud_run_v2_service" "backend" {
 
       env {
         name  = "GOOGLE_CLOUD_PROJECT"
-        value = var.project_id
+        value = local.project_id
       }
 
       env {
@@ -134,7 +135,7 @@ resource "google_cloud_run_v2_service" "backend" {
           cpu    = "1"
           memory = "512Mi"
         }
-        cpu_idle = true  # リクエストベース課金（CPU idle時は課金されない）
+        cpu_idle = true # リクエストベース課金（CPU idle時は課金されない）
       }
     }
 
@@ -166,7 +167,7 @@ resource "google_cloud_run_v2_service" "frontend" {
           cpu    = "1"
           memory = "512Mi"
         }
-        cpu_idle = true  # リクエストベース課金（CPU idle時は課金されない）
+        cpu_idle = true # リクエストベース課金（CPU idle時は課金されない）
       }
     }
 

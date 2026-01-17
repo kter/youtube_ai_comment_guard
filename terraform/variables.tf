@@ -1,6 +1,10 @@
-variable "project_id" {
-  description = "GCP Project ID"
-  type        = string
+variable "project_ids" {
+  description = "GCP Project IDs per environment"
+  type        = map(string)
+  default = {
+    dev = "youtube-ai-comment-guard-dev"
+    prd = "youtube-ai-comment-guard-prd"
+  }
 }
 
 variable "region" {
