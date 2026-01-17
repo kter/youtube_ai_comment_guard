@@ -1,0 +1,16 @@
+repos:
+  - repo: local
+    hooks:
+      - id: backend-tests
+        name: Backend Tests
+        entry: bash -c "cd backend && .venv/bin/pytest"
+        language: system
+        files: ^backend/
+        pass_filenames: false
+      
+      - id: frontend-tests
+        name: Frontend Tests
+        entry: bash -c "cd frontend && npm test -- run"
+        language: system
+        files: ^frontend/
+        pass_filenames: false
