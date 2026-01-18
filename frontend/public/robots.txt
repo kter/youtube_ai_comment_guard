@@ -1,0 +1,3 @@
+# Default robots.txt - will be replaced by build script for dev environment
+User-agent: *
+Allow: /

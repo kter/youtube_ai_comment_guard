@@ -150,8 +150,13 @@ build-frontend:
 		fi; \
 	fi
 	@echo "ℹ️ Using API URL: $$VITE_API_URL"
-	cd frontend && VITE_API_URL=$$VITE_API_URL npm run build
-	@echo "✅ フロントエンドをビルドしました"
+	@echo "ℹ️ Building for $(ENV) environment"
+	@if [ "$(ENV)" = "prd" ]; then \
+		cd frontend && VITE_API_URL=$$VITE_API_URL npm run build:prd; \
+	else \
+		cd frontend && VITE_API_URL=$$VITE_API_URL npm run build:dev; \
+	fi
+	@echo "✅ フロントエンドをビルドしました ($(ENV))"
 
 # Dev環境へデプロイ
 deploy-frontend-dev: build-frontend

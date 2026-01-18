@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/generate-robots.js",
+    "build:dev": "VITE_ENV=dev vite build && VITE_ENV=dev node scripts/generate-robots.js",
+    "build:prd": "VITE_ENV=prd vite build && VITE_ENV=prd node scripts/generate-robots.js",
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest"
