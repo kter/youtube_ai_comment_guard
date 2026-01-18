@@ -55,8 +55,8 @@ function AppContent() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchData()
-      // Refresh every 5 minutes
-      const interval = setInterval(fetchData, 5 * 60 * 1000)
+      // Refresh every 3 hours
+      const interval = setInterval(fetchData, 3 * 60 * 60 * 1000)
       return () => clearInterval(interval)
     }
   }, [isAuthenticated])
