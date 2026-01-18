@@ -31,75 +31,101 @@ async def process_comments(request: Request):
     4. Store results in Firestore
     """
     firestore: FirestoreService = request.app.state.firestore
-    youtube = YouTubeService()
+    firestore: FirestoreService = request.app.state.firestore
     ai = AIService()
 
     result = ProcessingResult(processed_count=0, hidden_count=0, held_count=0)
 
     try:
-        # Get list of videos to process
-        videos = await youtube.get_my_videos(max_results=5)  # Recent 5 videos
+        # Get credentials for all users
+        credentials_list = await firestore.get_all_user_credentials()
+        
+        if not credentials_list:
+            logger.warning("No user credentials found for processing")
+            return result
 
-        for video in videos:
-            video_id = video["video_id"]
+        for credentials_json in credentials_list:
+            try:
+                # Initialize YouTube service with user's credentials
+                youtube = YouTubeService(credentials_json=credentials_json)
+                
+                # Get list of videos to process
+                videos = await youtube.get_my_videos(max_results=5)  # Recent 5 videos
 
-            # Get new comments
-            comments = await youtube.get_comment_threads(video_id, max_results=50)
+                for video in videos:
+                    video_id = video["video_id"]
 
-            for comment_data in comments:
-                comment_id = comment_data["id"]
+                    # Get new comments
+                    comments = await youtube.get_comment_threads(video_id, max_results=50)
 
-                # Skip if already processed
-                if await firestore.comment_exists(comment_id):
-                    continue
+                    for comment_data in comments:
+                        comment_id = comment_data["id"]
 
-                try:
-                    # Analyze with AI
-                    analysis = await ai.analyze_comment(comment_data["text"])
+                        # Skip if already processed
+                        if await firestore.comment_exists(comment_id):
+                            continue
 
-                    # Determine moderation action
-                    moderation_status = ModerationStatus.PUBLISHED
-                    if analysis.toxicity_score >= settings.toxicity_threshold:
-                        moderation_status = ModerationStatus.REJECTED
-                        result.hidden_count += 1
-                    elif analysis.toxicity_score >= settings.hold_threshold:
-                        moderation_status = ModerationStatus.HELD_FOR_REVIEW
-                        result.held_count += 1
+                        try:
+                            # Analyze with AI
+                            analysis = await ai.analyze_comment(comment_data["text"])
 
-                    # Apply moderation if needed
-                    if moderation_status != ModerationStatus.PUBLISHED:
-                        await youtube.set_moderation_status(
-                            [comment_id],
-                            moderation_status,
-                        )
+                            # Determine moderation action
+                            moderation_status = ModerationStatus.PUBLISHED
+                            if analysis.toxicity_score >= settings.toxicity_threshold:
+                                moderation_status = ModerationStatus.REJECTED
+                                result.hidden_count += 1
+                            elif analysis.toxicity_score >= settings.hold_threshold:
+                                moderation_status = ModerationStatus.HELD_FOR_REVIEW
+                                result.held_count += 1
 
-                    # Create comment record
-                    comment = Comment(
-                        id=comment_id,
-                        video_id=video_id,
-                        author_name=comment_data["author_name"],
-                        author_channel_id=comment_data["author_channel_id"],
-                        original_text=comment_data["text"],
-                        mild_text=analysis.mild_text or comment_data["text"],
-                        category=analysis.category,
-                        toxicity_score=analysis.toxicity_score,
-                        moderation_status=moderation_status,
-                        published_at=datetime.fromisoformat(
-                            comment_data["published_at"].replace("Z", "+00:00")
-                        ),
-                        analyzed_at=datetime.now(timezone.utc),
-                        needs_reply=analysis.category
-                        in [CommentCategory.QUESTION, CommentCategory.CONSTRUCTIVE],
-                    )
+                            # Apply moderation if needed
+                            if moderation_status != ModerationStatus.PUBLISHED:
+                                await youtube.set_moderation_status(
+                                    [comment_id],
+                                    moderation_status,
+                                )
 
-                    # Save to Firestore
-                    await firestore.save_comment(comment)
-                    result.processed_count += 1
+                            # Create comment record
+                            is_replied = comment_data.get("reply_count", 0) > 0
+                            
+                            needs_reply = (
+                                analysis.category in [CommentCategory.QUESTION, CommentCategory.CONSTRUCTIVE]
+                                and not is_replied
+                            )
 
-                except Exception as e:
-                    error_msg = f"Error processing comment {comment_id}: {e}"
-                    logger.error(error_msg)
-                    result.errors.append(error_msg)
+                            comment = Comment(
+                                id=comment_id,
+                                video_id=video_id,
+                                author_name=comment_data["author_name"],
+                                author_channel_id=comment_data["author_channel_id"],
+                                original_text=comment_data["text"],
+                                mild_text=analysis.mild_text or comment_data["text"],
+                                category=analysis.category,
+                                toxicity_score=analysis.toxicity_score,
+                                moderation_status=moderation_status,
+                                published_at=datetime.fromisoformat(
+                                    comment_data["published_at"].replace("Z", "+00:00")
+                                ),
+                                analyzed_at=datetime.now(timezone.utc),
+                                needs_reply=needs_reply,
+                                reply_count=comment_data.get("reply_count", 0),
+                                viewer_rating=comment_data.get("viewer_rating", "none"),
+                            )
+
+                            # Save to Firestore
+                            await firestore.save_comment(comment)
+                            result.processed_count += 1
+
+                        except Exception as e:
+                            error_msg = f"Error processing comment {comment_id}: {e}"
+                            logger.error(error_msg)
+                            result.errors.append(error_msg)
+            
+            except Exception as e:
+                error_msg = f"Error processing user credentials: {e}"
+                logger.error(error_msg)
+                result.errors.append(error_msg)
+                continue
 
         # Update statistics
         await firestore.update_statistics(

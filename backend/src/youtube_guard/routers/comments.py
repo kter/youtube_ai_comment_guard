@@ -9,10 +9,10 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from youtube_guard.models import CommentCategory, CommentSummary, DashboardStats, ReplyRequest
+from youtube_guard.routers.auth import get_user_credentials
 from youtube_guard.services.ai_service import AIService
 from youtube_guard.services.firestore_service import FirestoreService
 from youtube_guard.services.youtube_service import YouTubeService
-
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -83,7 +83,6 @@ async def get_stats(request: Request):
         logger.error(f"Error getting stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to get statistics")
 
-
 @router.post("/{comment_id}/reply")
 async def reply_to_comment(
     request: Request,
@@ -101,9 +100,14 @@ async def reply_to_comment(
         comment = await firestore.get_comment(comment_id)
         if not comment:
             raise HTTPException(status_code=404, detail="Comment not found")
+        
+        # Get user credentials
+        credentials_json = get_user_credentials(request)
+        if not credentials_json:
+             raise HTTPException(status_code=401, detail="User not authenticated")
 
         # Post reply via YouTube API
-        youtube = YouTubeService()
+        youtube = YouTubeService(credentials_json=credentials_json)
         result = await youtube.reply_to_comment(comment_id, reply.text)
 
         # Mark as replied in database
@@ -119,6 +123,9 @@ async def reply_to_comment(
     except Exception as e:
         logger.error(f"Error replying to comment: {e}")
         raise HTTPException(status_code=500, detail="Failed to post reply")
+
+
+
 
 
 @router.post("/{comment_id}/suggest-reply")

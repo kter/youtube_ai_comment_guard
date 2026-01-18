@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     hold_threshold: int = 50  # Comments above this are held for review
 
     # AI Configuration
-    gemini_model: str = "gemini-1.5-flash-002"
+    gemini_model: str = "publishers/google/models/gemini-2.5-flash"
 
     # Frontend URLs for CORS
     frontend_url: str = ""  # Set via environment variable

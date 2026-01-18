@@ -46,8 +46,11 @@ def test_get_stats(client, mock_firestore):
     assert response.json()["total_processed"] == 20
     assert response.json()["positive_count"] == 10
 
+@patch("youtube_guard.routers.comments.get_user_credentials")
 @patch("youtube_guard.routers.comments.YouTubeService")
-def test_reply_to_comment(MockYouTubeService, client, mock_firestore):
+def test_reply_to_comment(MockYouTubeService, mock_get_credentials, client, mock_firestore):
+    # Setup mock credentials
+    mock_get_credentials.return_value = '{"token": "fake"}'
     # Setup mock
     mock_youtube_instance = MockYouTubeService.return_value
     # MUST be AsyncMock because it is awaited

@@ -152,6 +152,13 @@ async def callback(request: Request, code: str, state: Optional[str] = None):
         # Create session
         session_id = _create_session(user_data, credentials_json)
         
+        # Save credentials to Firestore for background processing
+        if hasattr(request.app.state, "firestore"):
+            await request.app.state.firestore.save_user_credentials(
+                user_data["id"], 
+                credentials_json
+            )
+        
         # Redirect to frontend with session cookie
         frontend_url = settings.frontend_url or "http://localhost:5173"
         response = RedirectResponse(url=frontend_url)

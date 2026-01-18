@@ -24,13 +24,13 @@ function CommentCard({ comment, onReply, showReplyButton = false }) {
       </div>
       {/* Always show mild_text, never original_text */}
       <p className="comment-text">{comment.mild_text}</p>
-      {(showReplyButton || comment.needs_reply) && (
-        <div className="comment-actions">
-          <button className="reply-button" onClick={() => onReply(comment)}>
+      <div className="comment-actions">
+        {(showReplyButton || comment.needs_reply) && (
+          <button className="action-button reply-button" onClick={() => onReply(comment)}>
             ✉️ 返信する
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

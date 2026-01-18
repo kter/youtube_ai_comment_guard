@@ -35,6 +35,40 @@ class FirestoreService:
         """Get statistics collection reference."""
         return self._db.collection("statistics")
 
+    @property
+    def users_collection(self):
+        """Get users collection reference."""
+        return self._db.collection("users")
+
+    async def save_user_credentials(self, user_id: str, credentials_json: str):
+        """Save user OAuth credentials.
+
+        Args:
+            user_id: Google User ID
+            credentials_json: OAuth credentials as JSON string
+        """
+        self.users_collection.document(user_id).set({
+            "credentials": credentials_json,
+            "updated_at": datetime.now(timezone.utc),
+        }, merge=True)
+        logger.info(f"Saved credentials for user {user_id}")
+
+    async def get_all_user_credentials(self) -> list[str]:
+        """Get all stored user credentials.
+
+        Returns:
+            List of credential JSON strings
+        """
+        docs = self.users_collection.stream()
+        credentials_list = []
+        
+        for doc in docs:
+            data = doc.to_dict()
+            if "credentials" in data:
+                credentials_list.append(data["credentials"])
+                
+        return credentials_list
+
     async def save_comment(self, comment: Comment) -> str:
         """Save a processed comment.
 

@@ -48,7 +48,10 @@ class Comment(BaseModel):
     moderation_status: ModerationStatus
     published_at: datetime
     analyzed_at: datetime
+    analyzed_at: datetime
     needs_reply: bool = False
+    reply_count: int = 0
+    viewer_rating: str = "none"  # "none" or "like"
 
 
 class CommentSummary(BaseModel):
@@ -79,6 +82,9 @@ class ReplyRequest(BaseModel):
 
     comment_id: str
     text: str
+
+
+
 
 
 class ProcessingResult(BaseModel):

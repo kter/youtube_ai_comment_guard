@@ -123,6 +123,8 @@ class YouTubeService:
                     "author_channel_id": snippet.get("authorChannelId", {}).get("value", ""),
                     "published_at": snippet["publishedAt"],
                     "like_count": snippet.get("likeCount", 0),
+                    "reply_count": item["snippet"]["totalReplyCount"],
+                    "viewer_rating": snippet.get("viewerRating", "none"),
                 })
 
             return comments
@@ -188,3 +190,4 @@ class YouTubeService:
         except HttpError as e:
             logger.error(f"YouTube API error replying to comment: {e}")
             raise
+
