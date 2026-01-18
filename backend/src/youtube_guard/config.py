@@ -15,6 +15,12 @@ class Settings(BaseSettings):
 
     # YouTube API
     youtube_credentials: str = ""  # JSON string from Secret Manager
+    
+    # OAuth Configuration
+    youtube_client_id: str = ""
+    youtube_client_secret: str = ""
+    session_secret_key: str = "dev-secret-key-change-in-production"
+    oauth_redirect_uri: str = ""  # Set based on environment
 
     # Processing Configuration
     toxicity_threshold: int = 70  # Comments above this score are hidden

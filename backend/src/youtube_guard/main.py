@@ -4,9 +4,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 from youtube_guard.config import settings
-from youtube_guard.routers import comments, scheduler
+from youtube_guard.routers import auth, comments, scheduler
 from youtube_guard.services.firestore_service import FirestoreService
 
 
@@ -31,6 +32,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Session middleware for OAuth state
+app.add_middleware(SessionMiddleware, secret_key=settings.session_secret_key)
+
 # CORS middleware for frontend
 app.add_middleware(
     CORSMiddleware,
@@ -41,6 +45,7 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(comments.router, prefix="/api/comments", tags=["Comments"])
 app.include_router(scheduler.router, prefix="/api/scheduler", tags=["Scheduler"])
 

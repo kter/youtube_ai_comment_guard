@@ -128,6 +128,36 @@ resource "google_secret_manager_secret" "youtube_credentials" {
   depends_on = [google_project_service.apis]
 }
 
+resource "google_secret_manager_secret" "youtube_client_id" {
+  secret_id = "youtube-client-id"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.apis]
+}
+
+resource "google_secret_manager_secret" "youtube_client_secret" {
+  secret_id = "youtube-client-secret"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.apis]
+}
+
+resource "google_secret_manager_secret" "session_secret_key" {
+  secret_id = "session-secret-key"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.apis]
+}
+
 # Service Account for Cloud Run
 resource "google_service_account" "cloud_run" {
   account_id   = "youtube-guard-runner"
@@ -187,6 +217,36 @@ resource "google_cloud_run_v2_service" "backend" {
       env {
         name  = "FRONTEND_URL"
         value = "https://${var.frontend_domains[local.environment]}"
+      }
+
+      env {
+        name = "YOUTUBE_CLIENT_ID"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.youtube_client_id.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "YOUTUBE_CLIENT_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.youtube_client_secret.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "SESSION_SECRET_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.session_secret_key.secret_id
+            version = "latest"
+          }
+        }
       }
 
       resources {
